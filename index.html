@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<title>Mini Mario Runner</title>
+<style>
+    body { margin:0; overflow:hidden; background:#87CEEB; }
+    canvas { display:block; margin:auto; background:#cceeff; }
+    #ui {
+        position:absolute;
+        top:10px; left:10px;
+        font-family:sans-serif;
+        font-size:18px;
+        color:#000;
+    }
+</style>
+</head>
+<body>
+
+<div id="ui">
+    ⏱ เวลา: <span id="time">60</span> |
+    ⭐ Score: <span id="score">0</span> |
+    ❤️ ชีวิต: <span id="lives">3</span>
+</div>
+
+<canvas id="gameCanvas" width="800" height="300"></canvas>
+
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+
+let gravity = 0.6;
+let gameOver = false;
+let score = 0;
+let lives = 3;
+let timeLeft = 60;
+
+const marioImg = new Image();
+const enemyImg = new Image();
+
+marioImg.src = "mario.png";
+enemyImg.src = "goomba.png";
+
+const player = {
+    x: 50,
+    y: 200,
+    width: 50,
+    height: 50,
+    dy: 0,
+    jumping: false
+};
+
+let obstacles = [];
+let clouds = [];
+
+let imagesLoaded = 0;
+function checkStart() {
+    imagesLoaded++;
+    if (imagesLoaded === 2) startGame();
+}
+
+marioImg.onload = checkStart;
+enemyImg.onload = checkStart;
+
+function startGame() {
+    spawnObstacle();
+    spawnCloud();
+    gameLoop();
+}
+
+function spawnObstacle() {
+    if (gameOver) return;
+
+    obstacles.push({ x: canvas.width, y: 210, width: 40, height: 40 });
+    setTimeout(spawnObstacle, 1000 + Math.random()*2000);
+}
+
+function spawnCloud() {
+    if (gameOver) return;
+
+    clouds.push({
+        x: canvas.width,
+        y: 30 + Math.random()*100,
+        size: 30 + Math.random()*30,
+        speed: 0.5 + Math.random()
+    });
+
+    setTimeout(spawnCloud, 2000 + Math.random()*2000);
+}
+
+setInterval(() => {
+    if (gameOver) return;
+    timeLeft--;
+    document.getElementById("time").innerText = timeLeft;
+    if (timeLeft <= 0) endGame("หมดเวลา!");
+}, 1000);
+
+function loseLife() {
+    lives--;
+    document.getElementById("lives").innerText = lives;
+    if (lives <= 0) endGame("ชีวิตหมดแล้ว!");
+}
+
+function endGame(msg) {
+    gameOver = true;
+    alert(msg + " คะแนนของคุณ: " + score);
+}
+
+document.addEventListener("keydown", e => {
+    if (e.code === "Space" && !player.jumping && !gameOver) {
+        player.dy = -12;
+        player.jumping = true;
+    }
+});
+
+function updatePlayer() {
+    player.dy += gravity;
+    player.y += player.dy;
+    if (player.y >= 200) {
+        player.y = 200;
+        player.jumping = false;
+    }
+}
+
+function drawPlayer() {
+    ctx.drawImage(marioImg, player.x, player.y, player.width, player.height);
+}
+
+function updateObstacles() {
+    obstacles.forEach((obs, i) => {
+        obs.x -= 5;
+        ctx.drawImage(enemyImg, obs.x, obs.y, obs.width, obs.height);
+
+        if (
+            player.x < obs.x + obs.width &&
+            player.x + player.width > obs.x &&
+            player.y < obs.y + obs.height &&
+            player.y + player.height > obs.y
+        ) {
+            obstacles.splice(i,1);
+            loseLife();
+        }
+
+        if (obs.x + obs.width < player.x) {
+            score++;
+            document.getElementById("score").innerText = score;
+        }
+    });
+}
+
+function updateClouds() {
+    clouds.forEach((c, i) => {
+        c.x -= c.speed;
+        ctx.fillStyle = "white";
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.size/2, 0, Math.PI*2);
+        ctx.arc(c.x + c.size/2, c.y+10, c.size/2.5, 0, Math.PI*2);
+        ctx.arc(c.x - c.size/2, c.y+10, c.size/2.5, 0, Math.PI*2);
+        ctx.fill();
+        if (c.x < -100) clouds.splice(i,1);
+    });
+}
+
+function gameLoop() {
+    if (gameOver) return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    updateClouds();
+    updatePlayer();
+    drawPlayer();
+    updateObstacles();
+    requestAnimationFrame(gameLoop);
+}
+</script>
+
+</body>
+</html>
